@@ -119,16 +119,31 @@ class DualAttention(nn.Module):
 
 
 class DualTransformerClassifier(nn.Module):
-    """Full model: DualEmbedding → DualAttention → mean-pool (real) → Linear classifier."""
+    """Full model: DualEmbedding + pos_emb → DualAttention → mean-pool (real) → Linear classifier.
 
-    def __init__(self, vocab_size: int, d_model: int, n_heads: int, n_classes: int = 2):
+    Positional embeddings are real-valued and added only to the real part of the
+    dual tensor — consistent with the algebra (position is not a dual quantity).
+    """
+
+    def __init__(
+        self,
+        vocab_size: int,
+        d_model: int,
+        n_heads: int,
+        n_classes: int = 2,
+        max_seq_len: int = 512,
+    ):
         super().__init__()
         self.embedding = DualEmbedding(vocab_size, d_model)
+        self.pos_emb = nn.Embedding(max_seq_len, d_model)
         self.attention = DualAttention(d_model, n_heads)
         self.classifier = nn.Linear(d_model, n_classes)
 
     def forward(self, token_ids: Tensor) -> Tensor:
-        x = self.embedding(token_ids)       # DualTensor [B, L, d]
-        x = self.attention(x)               # DualTensor [B, L, d]
-        pooled = x.real.mean(dim=1)         # [B, d]  — real part only
-        return self.classifier(pooled)      # [B, n_classes]
+        _, L = token_ids.shape
+        x = self.embedding(token_ids)                                   # DualTensor [B, L, d]
+        positions = torch.arange(L, device=token_ids.device).unsqueeze(0)
+        x = DualTensor(x.real + self.pos_emb(positions), x.dual)       # positional signal on real only
+        x = self.attention(x)                                           # DualTensor [B, L, d]
+        pooled = x.real.mean(dim=1)                                     # [B, d]  — real part only
+        return self.classifier(pooled)                                  # [B, n_classes]

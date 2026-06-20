@@ -33,11 +33,12 @@ def all_dual_params(model: DualTransformerClassifier) -> dict[str, nn.Parameter]
 
 def all_real_params(model: DualTransformerClassifier) -> dict[str, nn.Parameter]:
     return {
-        "emb_real":        model.embedding.emb_real.weight,
-        "W_Q.W_real":      model.attention.W_Q.W_real,
-        "W_K.W_real":      model.attention.W_K.W_real,
-        "W_V.W_real":      model.attention.W_V.W_real,
-        "W_O.W_real":      model.attention.W_O.W_real,
+        "emb_real":          model.embedding.emb_real.weight,
+        "pos_emb":           model.pos_emb.weight,
+        "W_Q.W_real":        model.attention.W_Q.W_real,
+        "W_K.W_real":        model.attention.W_K.W_real,
+        "W_V.W_real":        model.attention.W_V.W_real,
+        "W_O.W_real":        model.attention.W_O.W_real,
         "classifier.weight": model.classifier.weight,
         "classifier.bias":   model.classifier.bias,
     }
@@ -193,9 +194,12 @@ class TestDualTransformerClassifierForward:
         model.classifier.register_forward_hook(hook)
         model(ids)
 
-        # Recompute pooled manually
+        # Recompute pooled manually — must mirror forward: embed → +pos → attend → mean
         with torch.no_grad():
+            L = ids.shape[1]
+            positions = torch.arange(L).unsqueeze(0)
             x = model.embedding(ids)
+            x = DualTensor(x.real + model.pos_emb(positions), x.dual)
             x = model.attention(x)
             expected_pooled = x.real.mean(dim=1)
 
@@ -241,7 +245,7 @@ class TestDualTransformerClassifierGradients:
             assert param.grad is None, f"{name}.grad should be None"
 
     def test_parameter_count(self):
-        """Model has exactly 5 dual param tensors and 7 real param tensors."""
+        """Model has exactly 5 dual param tensors and 8 real param tensors."""
         model = make_model()
         assert len(all_dual_params(model)) == 5
-        assert len(all_real_params(model)) == 7
+        assert len(all_real_params(model)) == 8

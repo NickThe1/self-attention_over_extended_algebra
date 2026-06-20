@@ -57,13 +57,13 @@ Goal: balanced 50/50 binary dataset in `src/data/synthetic.py`, loaders ready fo
 
 ---
 
-## Phase 6 — Training Loop
+## Phase 6 — Training Loop ✅
 Goal: model trains to >85% test accuracy with per-epoch gradient norms logged.
 
-- [ ] 6.1 `train_epoch` / `evaluate` in `src/training/loop.py`
-- [ ] 6.2 AdamW, lr=1e-3, weight_decay=1e-4, 20 epochs, cross-entropy loss
-- [ ] 6.3 Log `‖∂L/∂W_real‖` and `‖∂L/∂W_dual‖` per layer per epoch
-- [ ] 6.4 Test accuracy >85%, majority baseline (50%) printed
+- [x] 6.1 `train_epoch` / `evaluate` in `src/training/loop.py`
+- [x] 6.2 AdamW, lr=1e-3, weight_decay=1e-4, 20 epochs, cross-entropy loss
+- [x] 6.3 Log `‖∂L/∂W_real‖` and `‖∂L/∂W_dual‖` per layer per epoch
+- [x] 6.4 Test accuracy >85%, majority baseline (50%) printed
 
 ---
 
@@ -120,6 +120,6 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | 3 | DualAttention block | [x] |
 | 4 | Full model, forward pass correct shape | [x] |
 | 5 | Dataset generation | [x] |
-| 6 | Training >85% accuracy + grad norm logging | [ ] |
+| 6 | Training >85% accuracy + grad norm logging | [x] |
 | 7 | Ablation + perturbation experiments | [ ] |
 | 8 | Report written | [ ] |

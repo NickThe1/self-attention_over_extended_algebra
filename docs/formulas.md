@@ -183,8 +183,16 @@ $E_d$ is initialised to zero, making the model a standard real network at the st
 Full pipeline combining the above blocks:
 
 $$
-\text{token\_ids} \;\xrightarrow{\text{DualEmbedding}}\; X \;\xrightarrow{\text{DualAttention}}\; X' \;\xrightarrow{\text{pool}}\; p \;\xrightarrow{\text{Linear}}\; \text{logits}
+\text{token\_ids} \;\xrightarrow{\text{DualEmbedding + pos\_emb}}\; X \;\xrightarrow{\text{DualAttention}}\; X' \;\xrightarrow{\text{pool}}\; p \;\xrightarrow{\text{Linear}}\; \text{logits}
 $$
+
+**Positional encoding** is a real-valued learned embedding table $P \in \mathbb{R}^{L_{\max} \times d}$, added only to the real part after token embedding:
+
+$$
+X_r[t] \leftarrow E_r[\text{id}_t] + P[t], \qquad X_d[t] = E_d[\text{id}_t]
+$$
+
+Position is not a dual quantity — it has no infinitesimal component. Adding $P$ to the real part preserves the algebraic structure and lets the model distinguish which position is first vs. last.
 
 Pooling extracts the real part and averages over the sequence:
 
@@ -198,7 +206,7 @@ $$
 \text{logits} = p W_c + b_c \in \mathbb{R}^{n_{\text{classes}}}
 $$
 
-**Dead-weight summary across the full model:** five dual parameter tensors exist ($E_d$, $W_{Q_d}$, $W_{K_d}$, $W_{V_d}$, $W_{O_d}$). None appear in the computation graph of `logits`. All five have `.grad = None` after any backward pass.
+**Dead-weight summary across the full model:** six dual parameter tensors exist ($E_d$, $W_{Q_d}$, $W_{K_d}$, $W_{V_d}$, $W_{O_d}$) — five in total — plus the real-valued positional table $P$ which does receive gradients. None of the five dual tensors appear in the computation graph of `logits`. All five have `.grad = None` after any backward pass.
 
 ---
 
