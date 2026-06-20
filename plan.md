@@ -38,12 +38,12 @@ Goal: `DualAttention` implementing scaled dot-product attention entirely over du
 
 ---
 
-## Phase 4 — Full Model
+## Phase 4 — Full Model ✅
 Goal: `DualTransformerClassifier` end-to-end in `src/model.py`, forward pass produces correct shape.
 
-- [ ] 4.1 `DualEmbedding`: `emb_real [V,d]` + `emb_dual [V,d]`, lookup by token index
-- [ ] 4.2 Pool: `mean(out.real, dim=1)`
-- [ ] 4.3 Classifier head: `nn.Linear(d, 2)` on pooled real vector
+- [x] 4.1 `DualEmbedding`: `emb_real [V,d]` + `emb_dual [V,d]`; `emb_dual` init to zero; lookup by token index
+- [x] 4.2 Pool: `mean(out.real, dim=1)`
+- [x] 4.3 Classifier head: `nn.Linear(d, 2)` on pooled real vector; 34 tests passing
 
 ---
 
@@ -118,7 +118,7 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | 1 | DualTensor primitives + unit tests | [x] |
 | 2 | DualLinear layer | [x] |
 | 3 | DualAttention block | [x] |
-| 4 | Full model, forward pass correct shape | [ ] |
+| 4 | Full model, forward pass correct shape | [x] |
 | 5 | Dataset generation | [ ] |
 | 6 | Training >85% accuracy + grad norm logging | [ ] |
 | 7 | Ablation + perturbation experiments | [ ] |

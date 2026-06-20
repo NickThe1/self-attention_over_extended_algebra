@@ -164,6 +164,44 @@ $W_{Q_d}, W_{K_d}, W_{V_d}, W_{O_d}$ never appear in $\text{out}_r$. All four du
 
 ---
 
+## `DualEmbedding`
+
+Two independent embedding tables $E_r, E_d \in \mathbb{R}^{V \times d}$ where $V$ is vocabulary size.
+
+$$
+\text{DualEmbedding}(i) = E_r[i] + \alpha\, E_d[i]
+$$
+
+$$
+\boxed{\text{real} = E_r[i], \qquad \text{dual} = E_d[i]}
+$$
+
+$E_d$ is initialised to zero, making the model a standard real network at the start of training.
+
+## `DualTransformerClassifier`
+
+Full pipeline combining the above blocks:
+
+$$
+\text{token\_ids} \;\xrightarrow{\text{DualEmbedding}}\; X \;\xrightarrow{\text{DualAttention}}\; X' \;\xrightarrow{\text{pool}}\; p \;\xrightarrow{\text{Linear}}\; \text{logits}
+$$
+
+Pooling extracts the real part and averages over the sequence:
+
+$$
+p = \frac{1}{L} \sum_{t=1}^{L} X'_r[t] \in \mathbb{R}^d
+$$
+
+The classifier is a standard real linear layer:
+
+$$
+\text{logits} = p W_c + b_c \in \mathbb{R}^{n_{\text{classes}}}
+$$
+
+**Dead-weight summary across the full model:** five dual parameter tensors exist ($E_d$, $W_{Q_d}$, $W_{K_d}$, $W_{V_d}$, $W_{O_d}$). None appear in the computation graph of `logits`. All five have `.grad = None` after any backward pass.
+
+---
+
 ## `dual_transpose`
 
 Transposition is a linear map, so its own derivative is itself:

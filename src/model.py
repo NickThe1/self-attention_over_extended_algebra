@@ -45,12 +45,20 @@ class DualLinear(nn.Module):
 
 
 class DualEmbedding(nn.Module):
+    """Token embedding over the dual-number algebra.
+
+    Two independent embedding tables (emb_real, emb_dual) of the same shape.
+    emb_dual is initialised to zero — consistent with the other dual parameters.
+    """
+
     def __init__(self, vocab_size: int, d_model: int):
         super().__init__()
-        raise NotImplementedError
+        self.emb_real = nn.Embedding(vocab_size, d_model)
+        self.emb_dual = nn.Embedding(vocab_size, d_model)
+        nn.init.zeros_(self.emb_dual.weight)
 
     def forward(self, token_ids: Tensor) -> DualTensor:
-        raise NotImplementedError
+        return DualTensor(self.emb_real(token_ids), self.emb_dual(token_ids))
 
 
 class DualAttention(nn.Module):
@@ -111,10 +119,16 @@ class DualAttention(nn.Module):
 
 
 class DualTransformerClassifier(nn.Module):
+    """Full model: DualEmbedding → DualAttention → mean-pool (real) → Linear classifier."""
+
     def __init__(self, vocab_size: int, d_model: int, n_heads: int, n_classes: int = 2):
         super().__init__()
-        raise NotImplementedError
+        self.embedding = DualEmbedding(vocab_size, d_model)
+        self.attention = DualAttention(d_model, n_heads)
+        self.classifier = nn.Linear(d_model, n_classes)
 
     def forward(self, token_ids: Tensor) -> Tensor:
-        """Returns logits shape [B, n_classes] computed from the real part of the output."""
-        raise NotImplementedError
+        x = self.embedding(token_ids)       # DualTensor [B, L, d]
+        x = self.attention(x)               # DualTensor [B, L, d]
+        pooled = x.real.mean(dim=1)         # [B, d]  — real part only
+        return self.classifier(pooled)      # [B, n_classes]
