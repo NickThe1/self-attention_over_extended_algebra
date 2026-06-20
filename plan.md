@@ -79,13 +79,13 @@ Goal: two experiments confirm b-components are dead; minimal fix proposed and di
 
 ---
 
-## Phase 8 — Report
+## Phase 8 — Report ✅
 Goal: `report.md` with formulas, results table, conclusions, and 2 external source citations.
 
-- [ ] 8.1 Formulas: dual matmul, dual softmax, gradient flow proof
-- [ ] 8.2 Results table: accuracy vs majority baseline; `‖∂L/∂W_real‖` vs `‖∂L/∂W_dual‖`
-- [ ] 8.3 Explanation of dead b-components via α²=0
-- [ ] 8.4 Citations: one AD/dual-numbers paper + one hypercomplex/quaternion attention paper
+- [x] 8.1 Formulas: dual matmul, dual softmax, gradient flow proof
+- [x] 8.2 Results table: accuracy vs majority baseline; `‖∂L/∂W_real‖` vs `‖∂L/∂W_dual‖`
+- [x] 8.3 Explanation of dead b-components via α²=0
+- [x] 8.4 Citations: one AD/dual-numbers paper + one hypercomplex/quaternion attention paper
 
 ---
 
@@ -122,4 +122,4 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | 5 | Dataset generation | [x] |
 | 6 | Training >85% accuracy + grad norm logging | [x] |
 | 7 | Ablation + perturbation experiments | [x] |
-| 8 | Report written | [ ] |
+| 8 | Report written | [x] |
