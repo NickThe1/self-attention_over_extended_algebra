@@ -9,14 +9,14 @@ Goal: deps installed, `src/` structure created, smoke test passes.
 
 ---
 
-## Phase 1 — Dual-Number Primitives
+## Phase 1 — Dual-Number Primitives ✅
 Goal: `DualTensor` and all algebra ops in `src/algebra.py`, covered by unit tests.
 
-- [ ] 1.1 `DualTensor(real, dual)` dataclass with shape assertion
-- [ ] 1.2 `dual_add`, `dual_mul` — element-wise
-- [ ] 1.3 `dual_matmul(x, w)` — real: `x.r @ w.r`, dual: `x.r @ w.d + x.d @ w.r`
-- [ ] 1.4 `dual_softmax(x)` — real: `softmax(x.r)`, dual: `s * (x.d - (s * x.d).sum(-1, keepdim=True))`
-- [ ] 1.5 Unit tests: α²=0, function-lift on exp/sigmoid, matmul against brute-force
+- [x] 1.1 `DualTensor(real, dual)` dataclass with shape assertion
+- [x] 1.2 `dual_add`, `dual_mul` — element-wise
+- [x] 1.3 `dual_matmul(x, w)` — real: `x.r @ w.r`, dual: `x.r @ w.d + x.d @ w.r`
+- [x] 1.4 `dual_softmax(x)` — real: `softmax(x.r)`, dual: `s * (x.d - (s * x.d).sum(-1, keepdim=True))`
+- [x] 1.5 46 tests passing: α²=0, function-lift via autograd JVP, matmul brute-force, numerical Jacobian for softmax
 
 ---
 
@@ -115,7 +115,7 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | # | Task | Done? |
 |---|---|---|
 | 0 | Deps installed, src/ structure, smoke test | [x] |
-| 1 | DualTensor primitives + unit tests | [ ] |
+| 1 | DualTensor primitives + unit tests | [x] |
 | 2 | DualLinear layer | [ ] |
 | 3 | DualAttention block | [ ] |
 | 4 | Full model, forward pass correct shape | [ ] |
