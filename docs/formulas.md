@@ -1,0 +1,109 @@
+# Mathematical Formulas
+
+## The Algebra
+
+Elements have the form $a + \alpha b$ where $a, b \in \mathbb{R}$ and $\alpha$ is a formal symbol with the single additional property:
+
+$$\alpha^2 = 0$$
+
+In code, each element is represented as a pair of tensors `(real, dual)` of identical shape.
+
+A smooth function $f$ extends to this algebra via the **function-lift rule**:
+
+$$f(a + \alpha b) = f(a) + \alpha f'(a)\, b$$
+
+This is the algebraic basis of forward-mode automatic differentiation: `real` carries the value, `dual` carries the directional derivative.
+
+---
+
+## `dual_add`
+
+$$
+(a + \alpha b) + (c + \alpha d) = (a + c) + \alpha(b + d)
+$$
+
+Component-wise:
+
+$$
+\text{real} = a + c, \qquad \text{dual} = b + d
+$$
+
+---
+
+## `dual_mul`
+
+Element-wise multiplication using $\alpha^2 = 0$:
+
+$$
+(a + \alpha b)(c + \alpha d) = ac + \alpha(ad + bc) + \underbrace{\alpha^2}_{=\,0} bd
+$$
+
+$$
+\boxed{\text{real} = a \odot c, \qquad \text{dual} = a \odot d + b \odot c}
+$$
+
+where $\odot$ denotes element-wise multiplication.
+
+---
+
+## `dual_matmul`
+
+Matrix multiplication of $X = (A, B)$ and $W = (C, D)$, derived from the same rule:
+
+$$
+XW = (A + \alpha B)(C + \alpha D) = AC + \alpha(AD + BC)
+$$
+
+$$
+\boxed{\text{real} = A C, \qquad \text{dual} = A D + B C}
+$$
+
+**Key consequence:** if $A = 0$ (pure-dual input) and $C = 0$ (pure-dual weight), both parts vanish — mirroring $\alpha^2 = 0$ at the matrix level. This is why the $b$-components of the network weights are algebraically invisible to `out.real`.
+
+---
+
+## `dual_softmax`
+
+Applying the function-lift rule to $\text{softmax}$:
+
+$$
+\text{softmax}(a + \alpha b) = \text{softmax}(a) + \alpha\, J_{\text{softmax}}(a)\, b
+$$
+
+Let $s = \text{softmax}(a)$. The Jacobian of softmax is:
+
+$$
+J_{\text{softmax}}(a) = \text{diag}(s) - s s^\top
+$$
+
+Applying it to $b$:
+
+$$
+J_{\text{softmax}}(a)\, b = s \odot b - s (s^\top b) = s \odot \bigl(b - (s \cdot b)\bigr)
+$$
+
+$$
+\boxed{\text{real} = \text{softmax}(a), \qquad \text{dual} = s \odot \bigl(b - (s \cdot b)\bigr)}
+$$
+
+where $s \cdot b = \sum_i s_i b_i$ is a scalar (broadcast along the softmax dimension).
+
+**Invariant:** the dual part always sums to zero along the softmax dimension:
+
+$$
+\sum_i \text{dual}_i = \sum_i s_i (b_i - (s \cdot b)) = (s \cdot b) - (s \cdot b) \underbrace{\sum_i s_i}_{=\,1} = 0
+$$
+
+---
+
+## `dual_transpose`
+
+Transposition is a linear map, so its own derivative is itself:
+
+$$
+(A + \alpha B)^\top = A^\top + \alpha B^\top
+$$
+
+$$
+\boxed{\text{real} = A^{\top}, \qquad \text{dual} = B^{\top}}
+$$
