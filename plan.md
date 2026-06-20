@@ -67,15 +67,15 @@ Goal: model trains to >85% test accuracy with per-epoch gradient norms logged.
 
 ---
 
-## Phase 7 — Research Diagnostics
+## Phase 7 — Research Diagnostics ✅
 Goal: two experiments confirm b-components are dead; minimal fix proposed and discussed.
 
 **Hypothesis**: `out.real = softmax(Q_r K_r^T / √d) @ V_r` — dual weights never enter `out.real`, so `∂L/∂W_dual = 0`.
 
-- [ ] 7.1 **Exp A** (gradient norms): confirm `‖∂L/∂W_dual‖ ≈ 0` throughout training
-- [ ] 7.2 **Exp B** (ablation): full-dual vs b=0-frozen → identical test accuracy
-- [ ] 7.3 **Exp C** (perturbation): perturb `W_dual` by σ ∈ {0.1, 1.0, 10.0} post-training → no accuracy change
-- [ ] 7.4 Minimal fix: `logit = linear_a(out.real) + linear_b(out.dual)` — discuss whether this is still a valid algebraic continuation
+- [x] 7.1 **Exp A** (gradient norms): confirm `‖∂L/∂W_dual‖ ≈ 0` throughout training
+- [x] 7.2 **Exp B** (ablation): full-dual vs b=0-frozen → identical test accuracy
+- [x] 7.3 **Exp C** (perturbation): perturb `W_dual` by σ ∈ {0.1, 1.0, 10.0} post-training → no accuracy change
+- [x] 7.4 Minimal fix: `logit = linear_a(out.real) + linear_b(out.dual)` — discuss whether this is still a valid algebraic continuation
 
 ---
 
@@ -121,5 +121,5 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | 4 | Full model, forward pass correct shape | [x] |
 | 5 | Dataset generation | [x] |
 | 6 | Training >85% accuracy + grad norm logging | [x] |
-| 7 | Ablation + perturbation experiments | [ ] |
+| 7 | Ablation + perturbation experiments | [x] |
 | 8 | Report written | [ ] |
