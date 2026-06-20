@@ -28,13 +28,13 @@ Goal: `DualLinear` in `src/model.py` with learnable real and dual weight matrice
 
 ---
 
-## Phase 3 — Dual Self-Attention Block
+## Phase 3 — Dual Self-Attention Block ✅
 Goal: `DualAttention` implementing scaled dot-product attention entirely over dual numbers.
 
-- [ ] 3.1 Three `DualLinear` projections W_Q, W_K, W_V
-- [ ] 3.2 Scores: `dual_matmul(Q, K^T) / sqrt(d_head)`
-- [ ] 3.3 Weights: `dual_softmax(scores)`
-- [ ] 3.4 Output: `dual_matmul(attn, V)` + output projection `DualLinear`
+- [x] 3.1 Four `DualLinear` projections W_Q, W_K, W_V, W_O (no bias); head split/merge helpers
+- [x] 3.2 Scores: `dual_matmul(Q, dual_transpose(K, -2, -1)) * scale`
+- [x] 3.3 Weights: `dual_softmax(scores, dim=-1)`
+- [x] 3.4 Output: `dual_matmul(attn, V)` → merge heads → W_O; 26 tests passing
 
 ---
 
@@ -117,7 +117,7 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | 0 | Deps installed, src/ structure, smoke test | [x] |
 | 1 | DualTensor primitives + unit tests | [x] |
 | 2 | DualLinear layer | [x] |
-| 3 | DualAttention block | [ ] |
+| 3 | DualAttention block | [x] |
 | 4 | Full model, forward pass correct shape | [ ] |
 | 5 | Dataset generation | [ ] |
 | 6 | Training >85% accuracy + grad norm logging | [ ] |

@@ -120,6 +120,50 @@ $$
 
 ---
 
+## `DualAttention`
+
+Multi-head scaled dot-product self-attention where every step operates over dual numbers.
+
+**Input:** $X = (X_r, X_d) \in \mathbb{R}^{B \times L \times d}$
+
+**Step 1 — Project**
+
+$$Q = \text{DualLinear}_{Q}(X), \quad K = \text{DualLinear}_{K}(X), \quad V = \text{DualLinear}_{V}(X)$$
+
+Split each into $H$ heads: reshape $[B, L, d] \to [B, H, L, d_h]$ where $d_h = d / H$.
+
+**Step 2 — Scaled scores**
+
+$$S = \frac{1}{\sqrt{d_h}}\, Q K^\top \in \mathbb{R}^{B \times H \times L \times L}$$
+
+Computed as `dual_matmul(Q, dual_transpose(K, -2, -1)) * scale`, so:
+
+$$\boxed{S_r = \frac{Q_r K_r^\top}{\sqrt{d_h}}, \qquad S_d = \frac{Q_r K_d^\top + Q_d K_r^\top}{\sqrt{d_h}}}$$
+
+**Step 3 — Attention weights**
+
+$$A = \text{dual\_softmax}(S, \text{dim}=-1)$$
+
+$$\boxed{A_r = \text{softmax}(S_r), \qquad A_d = A_r \odot \bigl(S_d - (A_r \cdot S_d)\bigr)}$$
+
+**Step 4 — Weighted sum**
+
+$$C = A V$$
+
+$$\boxed{C_r = A_r V_r, \qquad C_d = A_r V_d + A_d V_r}$$
+
+**Step 5 — Output projection**
+
+$$\text{out} = \text{DualLinear}_{O}(\text{merge\_heads}(C))$$
+
+**Key observation across all steps:** tracing only the real components:
+
+$$\text{out}_r = \text{softmax}\!\left(\frac{X_r W_{Q_r} W_{K_r}^\top X_r^\top}{\sqrt{d_h}}\right) X_r W_{V_r} W_{O_r}$$
+
+$W_{Q_d}, W_{K_d}, W_{V_d}, W_{O_d}$ never appear in $\text{out}_r$. All four dual weight matrices have `.grad = None` after backpropagating a loss on `out.real`.
+
+---
+
 ## `dual_transpose`
 
 Transposition is a linear map, so its own derivative is itself:

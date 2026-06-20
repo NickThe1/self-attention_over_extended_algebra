@@ -54,12 +54,60 @@ class DualEmbedding(nn.Module):
 
 
 class DualAttention(nn.Module):
+    """Scaled dot-product multi-head self-attention over the dual-number algebra.
+
+    Every operation — projection, score computation, softmax, weighted sum,
+    output projection — follows dual-number arithmetic. The real output is
+    algebraically independent of all W_dual parameters.
+    """
+
     def __init__(self, d_model: int, n_heads: int):
         super().__init__()
-        raise NotImplementedError
+        assert d_model % n_heads == 0, f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.d_head = d_model // n_heads
+        self.scale = self.d_head ** -0.5
+
+        self.W_Q = DualLinear(d_model, d_model, bias=False)
+        self.W_K = DualLinear(d_model, d_model, bias=False)
+        self.W_V = DualLinear(d_model, d_model, bias=False)
+        self.W_O = DualLinear(d_model, d_model, bias=False)
+
+    def _split_heads(self, x: DualTensor, B: int, L: int) -> DualTensor:
+        """[B, L, d_model] → [B, n_heads, L, d_head]."""
+        return DualTensor(
+            x.real.view(B, L, self.n_heads, self.d_head).transpose(1, 2),
+            x.dual.view(B, L, self.n_heads, self.d_head).transpose(1, 2),
+        )
+
+    def _merge_heads(self, x: DualTensor, B: int, L: int) -> DualTensor:
+        """[B, n_heads, L, d_head] → [B, L, d_model]."""
+        return DualTensor(
+            x.real.transpose(1, 2).contiguous().view(B, L, self.d_model),
+            x.dual.transpose(1, 2).contiguous().view(B, L, self.d_model),
+        )
 
     def forward(self, x: DualTensor) -> DualTensor:
-        raise NotImplementedError
+        B, L, _ = x.real.shape
+
+        # Step 1: project to Q, K, V
+        Q = self._split_heads(self.W_Q(x), B, L)  # [B, H, L, d_head]
+        K = self._split_heads(self.W_K(x), B, L)
+        V = self._split_heads(self.W_V(x), B, L)
+
+        # Step 2: scaled dot-product scores [B, H, L, L]
+        scores = dual_matmul(Q, dual_transpose(K, -2, -1))
+        scores = DualTensor(scores.real * self.scale, scores.dual * self.scale)
+
+        # Step 3: softmax over key dimension
+        attn = dual_softmax(scores, dim=-1)
+
+        # Step 4: weighted sum [B, H, L, d_head]
+        context = dual_matmul(attn, V)
+
+        # Step 5: merge heads and output projection
+        return self.W_O(self._merge_heads(context, B, L))
 
 
 class DualTransformerClassifier(nn.Module):
