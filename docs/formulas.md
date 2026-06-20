@@ -96,6 +96,30 @@ $$
 
 ---
 
+## `DualLinear`
+
+A linear projection where both weights and input are dual numbers. Parameters: $W = (W_r, W_d)$ with $W_r, W_d \in \mathbb{R}^{d_{\text{in}} \times d_{\text{out}}}$, and optional bias $b \in \mathbb{R}^{d_{\text{out}}}$.
+
+Given input $X = (X_r, X_d)$:
+
+$$
+\text{DualLinear}(X) = X \cdot W + b = (X_r + \alpha X_d)(W_r + \alpha W_d) + b
+$$
+
+Expanding with $\alpha^2 = 0$:
+
+$$
+\boxed{\text{real} = X_r W_r + b, \qquad \text{dual} = X_r W_d + X_d W_r}
+$$
+
+**Bias placement:** $b$ is real-valued ($b + \alpha \cdot 0$), so it only shifts the real part.
+
+**Initialisation:** $W_r \sim \text{Kaiming uniform}$, $W_d = 0$. Starting from $W_d = 0$ makes the model equivalent to a standard real network at initialisation.
+
+**Dead-weight consequence:** `out.real` $= X_r W_r + b$ has no dependence on $W_d$. PyTorch autograd never visits $W_d$ during backprop through `out.real` — its `.grad` remains `None`, not merely zero.
+
+---
+
 ## `dual_transpose`
 
 Transposition is a linear map, so its own derivative is itself:

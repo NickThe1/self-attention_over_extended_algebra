@@ -20,11 +20,11 @@ Goal: `DualTensor` and all algebra ops in `src/algebra.py`, covered by unit test
 
 ---
 
-## Phase 2 — Dual Linear Layer
+## Phase 2 — Dual Linear Layer ✅
 Goal: `DualLinear` in `src/model.py` with learnable real and dual weight matrices.
 
-- [ ] 2.1 `W_real`, `W_dual` parameters (both `[in, out]`)
-- [ ] 2.2 Forward: `dual_matmul(x, DualTensor(W_real, W_dual))` + bias on real part only
+- [x] 2.1 `W_real`, `W_dual` parameters (both `[in, out]`); `W_dual` init to zero; Kaiming uniform for `W_real`
+- [x] 2.2 Forward: `dual_matmul(x, DualTensor(W_real, W_dual))` + bias on real part only; 27 tests passing
 
 ---
 
@@ -116,7 +116,7 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 |---|---|---|
 | 0 | Deps installed, src/ structure, smoke test | [x] |
 | 1 | DualTensor primitives + unit tests | [x] |
-| 2 | DualLinear layer | [ ] |
+| 2 | DualLinear layer | [x] |
 | 3 | DualAttention block | [ ] |
 | 4 | Full model, forward pass correct shape | [ ] |
 | 5 | Dataset generation | [ ] |
