@@ -47,13 +47,13 @@ Goal: `DualTransformerClassifier` end-to-end in `src/model.py`, forward pass pro
 
 ---
 
-## Phase 5 — Synthetic Dataset
+## Phase 5 — Synthetic Dataset ✅
 Goal: balanced 50/50 binary dataset in `src/data/synthetic.py`, loaders ready for training.
 
-- [ ] 5.1 `FirstLastMatchDataset`: label = `tokens[0] == tokens[-1]`, vocab=32, seq_len=16
-- [ ] 5.2 Positive: `tokens[15] = tokens[0]`; negative: `tokens[15] != tokens[0]` (explicit rejection sample)
-- [ ] 5.3 `make_dataloaders(4000, 1000, batch_size=64)` → `(train_loader, test_loader)`
-- [ ] 5.4 `majority_baseline()` returns 0.5
+- [x] 5.1 `FirstLastMatchDataset`: label = `tokens[0] == tokens[-1]`, vocab=32, seq_len=16
+- [x] 5.2 Positive: `tokens[15] = tokens[0]`; negative: `tokens[15] != tokens[0]` (explicit rejection sample)
+- [x] 5.3 `make_dataloaders(4000, 1000, batch_size=64)` → `(train_loader, test_loader)`
+- [x] 5.4 `majority_baseline()` returns 0.5
 
 ---
 
@@ -119,7 +119,7 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | 2 | DualLinear layer | [x] |
 | 3 | DualAttention block | [x] |
 | 4 | Full model, forward pass correct shape | [x] |
-| 5 | Dataset generation | [ ] |
+| 5 | Dataset generation | [x] |
 | 6 | Training >85% accuracy + grad norm logging | [ ] |
 | 7 | Ablation + perturbation experiments | [ ] |
 | 8 | Report written | [ ] |
