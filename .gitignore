@@ -11,6 +11,9 @@ log/
 .vscode
 .gigacoode
 
+# Claude Code
+.claude/settings.local.json
+
 # ML artifacts
 *.pt
 *.pth
