@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from algebra import DualTensor
-from model import DualTransformerClassifier
+from model import DualTransformerClassifier, DualAttention, RealTransformerClassifier
 from training.loop import evaluate, run_training
 
 
@@ -143,9 +143,11 @@ class DualOutputClassifier(nn.Module):
     and weighted-sum steps. Instead, we must branch at the pooling stage.
     """
 
-    def __init__(self, vocab_size: int, d_model: int, n_heads: int, n_classes: int = 2):
+    def __init__(self, vocab_size: int, d_model: int, n_heads: int, n_classes: int = 2,
+                 max_seq_len: int = 512):
         super().__init__()
-        self.backbone = DualTransformerClassifier(vocab_size, d_model, n_heads, n_classes)
+        self.backbone = DualTransformerClassifier(vocab_size, d_model, n_heads, n_classes,
+                                                   max_seq_len=max_seq_len)
         self.linear_b = nn.Linear(d_model, n_classes)
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
@@ -157,3 +159,150 @@ class DualOutputClassifier(nn.Module):
         pooled_real = x.real.mean(dim=1)
         pooled_dual = x.dual.mean(dim=1)
         return self.backbone.classifier(pooled_real) + self.linear_b(pooled_dual)
+
+
+# ── Phase 10 ──────────────────────────────────────────────────────────────────
+
+def _count_params(model: nn.Module) -> int:
+    return sum(p.numel() for p in model.parameters())
+
+
+def _find_d_big(
+    vocab_size: int,
+    n_heads: int,
+    target_params: int,
+    seq_len: int,
+    start: int,
+) -> int:
+    """Find the smallest d_model (divisible by n_heads, > start) where
+    RealTransformerClassifier has >= target_params parameters."""
+    d = start + n_heads - (start % n_heads) if start % n_heads else start + n_heads
+    while True:
+        cand = RealTransformerClassifier(vocab_size, d, n_heads, max_seq_len=seq_len)
+        if _count_params(cand) >= target_params:
+            return d
+        d += n_heads
+
+
+def _train_variant(
+    model: nn.Module,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    n_epochs: int,
+    device: torch.device,
+    dual_attn: nn.Module | None = None,
+) -> tuple[list[dict], list[float]]:
+    """Train one model variant; optionally track mean |b_repr| per epoch via a hook.
+
+    dual_attn — the DualAttention submodule whose output DualTensor.dual we monitor.
+    Returns (epoch_history, b_mag_per_epoch). b_mag_per_epoch is [] when dual_attn is None.
+    """
+    model = model.to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    criterion = nn.CrossEntropyLoss()
+
+    b_batch: list[float] = []
+    b_per_epoch: list[float] = []
+
+    if dual_attn is not None:
+        def _hook(mod, inp, out: DualTensor):  # type: ignore[override]
+            b_batch.append(out.dual.abs().mean().item())
+        handle = dual_attn.register_forward_hook(_hook)
+
+    history: list[dict] = []
+    for epoch in range(1, n_epochs + 1):
+        b_batch.clear()
+        model.train()
+        for tokens, labels in train_loader:
+            tokens, labels = tokens.to(device), labels.to(device)
+            optimizer.zero_grad()
+            criterion(model(tokens), labels).backward()
+            optimizer.step()
+
+        if dual_attn is not None and b_batch:
+            b_per_epoch.append(sum(b_batch) / len(b_batch))
+
+        model.eval()
+        correct = total = 0
+        with torch.no_grad():
+            for tokens, labels in test_loader:
+                tokens, labels = tokens.to(device), labels.to(device)
+                correct += (model(tokens).argmax(-1) == labels).sum().item()
+                total += len(labels)
+        history.append({"epoch": epoch, "test_acc": correct / total})
+
+    if dual_attn is not None:
+        handle.remove()  # type: ignore[possibly-undefined]
+
+    return history, b_per_epoch
+
+
+def experiment_10_comparison(
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    device: torch.device,
+    d_model: int = 32,
+    n_heads: int = 2,
+    n_epochs: int = 20,
+    vocab_size: int = 32,
+    seq_len: int = 16,
+) -> dict:
+    """Phase 10 — four-way comparison for the b-component contribution question.
+
+    Variants:
+      dual       — DualTransformerClassifier(d_model), b-components structurally dead
+      real_small — RealTransformerClassifier(d_model), same width, ~half the params
+      real_big   — RealTransformerClassifier(d_big), matched param count to dual
+      fixed_dual — DualOutputClassifier(d_model), b-components routed into logit
+
+    All four are trained from seed 0 on the same data splits.
+
+    Returns a dict keyed by variant name; each value contains:
+      d_model, n_params, test_acc, history, b_mag_per_epoch (dual variants only).
+    """
+    # ── reference dual model → param target ──────────────────────────────────
+    ref = DualTransformerClassifier(vocab_size, d_model, n_heads, max_seq_len=seq_len)
+    target = _count_params(ref)
+    d_big = _find_d_big(vocab_size, n_heads, target, seq_len, d_model)
+
+    results: dict[str, dict] = {}
+
+    # ── variant 1: dual (b dead) ──────────────────────────────────────────────
+    torch.manual_seed(0)
+    dual = DualTransformerClassifier(vocab_size, d_model, n_heads, max_seq_len=seq_len).to(device)
+    hist, b_mag = _train_variant(dual, train_loader, test_loader, n_epochs, device,
+                                  dual_attn=dual.attention)
+    results["dual"] = {
+        "d_model": d_model, "n_params": _count_params(dual),
+        "test_acc": hist[-1]["test_acc"], "history": hist, "b_mag_per_epoch": b_mag,
+    }
+
+    # ── variant 2: real-small (same d_model, fewer params) ───────────────────
+    torch.manual_seed(0)
+    real_small = RealTransformerClassifier(vocab_size, d_model, n_heads, max_seq_len=seq_len)
+    hist, _ = _train_variant(real_small, train_loader, test_loader, n_epochs, device)
+    results["real_small"] = {
+        "d_model": d_model, "n_params": _count_params(real_small),
+        "test_acc": hist[-1]["test_acc"], "history": hist, "b_mag_per_epoch": [],
+    }
+
+    # ── variant 3: real-big (matched param count) ────────────────────────────
+    torch.manual_seed(0)
+    real_big = RealTransformerClassifier(vocab_size, d_big, n_heads, max_seq_len=seq_len)
+    hist, _ = _train_variant(real_big, train_loader, test_loader, n_epochs, device)
+    results["real_big"] = {
+        "d_model": d_big, "n_params": _count_params(real_big),
+        "test_acc": hist[-1]["test_acc"], "history": hist, "b_mag_per_epoch": [],
+    }
+
+    # ── variant 4: fixed-dual (b routed to logit) ────────────────────────────
+    torch.manual_seed(0)
+    fixed = DualOutputClassifier(vocab_size, d_model, n_heads, max_seq_len=seq_len).to(device)
+    hist, b_mag = _train_variant(fixed, train_loader, test_loader, n_epochs, device,
+                                  dual_attn=fixed.backbone.attention)
+    results["fixed_dual"] = {
+        "d_model": d_model, "n_params": _count_params(fixed),
+        "test_acc": hist[-1]["test_acc"], "history": hist, "b_mag_per_epoch": b_mag,
+    }
+
+    return results

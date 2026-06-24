@@ -2,6 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 
 from algebra import DualTensor, dual_matmul, dual_softmax, dual_transpose
@@ -147,3 +148,67 @@ class DualTransformerClassifier(nn.Module):
         x = self.attention(x)                                           # DualTensor [B, L, d]
         pooled = x.real.mean(dim=1)                                     # [B, d]  — real part only
         return self.classifier(pooled)                                  # [B, n_classes]
+
+
+# ── Real-valued baseline ───────────────────────────────────────────────────────
+
+class RealAttention(nn.Module):
+    """Standard scaled dot-product multi-head self-attention (no dual arithmetic).
+
+    Structurally mirrors DualAttention so the two are directly comparable:
+    same four projections (Q, K, V, O), no bias, same head-split logic.
+    """
+
+    def __init__(self, d_model: int, n_heads: int):
+        super().__init__()
+        assert d_model % n_heads == 0, f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.d_head = d_model // n_heads
+        self.scale = self.d_head ** -0.5
+
+        self.W_Q = nn.Linear(d_model, d_model, bias=False)
+        self.W_K = nn.Linear(d_model, d_model, bias=False)
+        self.W_V = nn.Linear(d_model, d_model, bias=False)
+        self.W_O = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        B, L, _ = x.shape
+        Q = self.W_Q(x).view(B, L, self.n_heads, self.d_head).transpose(1, 2)
+        K = self.W_K(x).view(B, L, self.n_heads, self.d_head).transpose(1, 2)
+        V = self.W_V(x).view(B, L, self.n_heads, self.d_head).transpose(1, 2)
+
+        scores = torch.matmul(Q, K.transpose(-2, -1)) * self.scale
+        attn = F.softmax(scores, dim=-1)
+        context = torch.matmul(attn, V)
+        context = context.transpose(1, 2).contiguous().view(B, L, self.d_model)
+        return self.W_O(context)
+
+
+class RealTransformerClassifier(nn.Module):
+    """Plain real-valued transformer classifier, structurally matching DualTransformerClassifier.
+
+    Used as a baseline in Phase 10 to determine whether the dual b-components
+    add any value beyond a standard real network of equal or matched parameter count.
+    """
+
+    def __init__(
+        self,
+        vocab_size: int,
+        d_model: int,
+        n_heads: int,
+        n_classes: int = 2,
+        max_seq_len: int = 512,
+    ):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        self.pos_emb = nn.Embedding(max_seq_len, d_model)
+        self.attention = RealAttention(d_model, n_heads)
+        self.classifier = nn.Linear(d_model, n_classes)
+
+    def forward(self, token_ids: Tensor) -> Tensor:
+        _, L = token_ids.shape
+        positions = torch.arange(L, device=token_ids.device).unsqueeze(0)
+        x = self.embedding(token_ids) + self.pos_emb(positions)
+        x = self.attention(x)
+        return self.classifier(x.mean(dim=1))

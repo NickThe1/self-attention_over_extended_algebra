@@ -89,6 +89,28 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 
 ---
 
+## Phase 10 — b-Component Contribution Audit ✅
+Goal: rigorously determine whether the b-component of weights and representations makes any meaningful contribution to predictions, vs. a plain real-valued network of equivalent size.
+
+**Hypothesis to test**: the dual model with `d` dimensions is functionally identical to a real-only model with `d` dimensions (not `2d`), because b never reaches the loss.
+
+- [x] 10.1 **RealTransformerClassifier**: implement a plain `nn.`-based transformer with `d_model` dims and the same depth/heads as the dual model — no dual arithmetic, no W_dual.  Param count: `~d²` per projection vs. `~2d²` in dual model.
+- [x] 10.2 **Matched-parameter baseline**: a second real model with `d_model_big` chosen so its param count equals the dual model's total (real + dual params). This is the honest apples-to-apples control.
+- [x] 10.3 **Three-way training run**: train all three models (dual, real-small, real-big) on the same seeds and loaders; record final test accuracy + convergence curve.
+- [x] 10.4 **b-magnitude tracking**: during training of the dual model, log `mean |b_repr|` (the dual part of token representations after each attention block) to confirm it stays at zero or grows — evidence that b is never written.
+- [x] 10.5 **Fixed-dual variant** (from 7.4): `logit = head_real(out.real) + head_dual(out.dual)` — train this and compare; if it outperforms real-big, b carries signal; if not, dual algebra adds nothing.
+- [x] 10.6 Report section update: table with param counts, test accuracies, and b-magnitude norms for all four variants; clear verdict on research question.
+
+---
+
+## Phase 11 — Explicit Source Integration ✅
+Goal: satisfy the requirement "ознакомьтесь с двумя источниками и явно свяжите прочитанное со своими экспериментами".
+
+- [x] 11.1 Add inline `[1]`/`[2]` citations at every point in the report body where a source is directly relevant (function-lift rule, gradient proof, hypercomplex contrast).
+- [x] 11.2 Add a dedicated "Connection to Prior Work" section that explicitly names what each paper says and how each experimental finding confirms, extends, or contrasts it.
+
+---
+
 ## File Layout
 
 ```
@@ -123,3 +145,5 @@ Goal: `report.md` with formulas, results table, conclusions, and 2 external sour
 | 6 | Training >85% accuracy + grad norm logging | [x] |
 | 7 | Ablation + perturbation experiments | [x] |
 | 8 | Report written | [x] |
+| 10 | b-component contribution audit (real vs dual, matched params) | [x] |
+| 11 | Explicit source integration — inline citations + prior-work section | [x] |
